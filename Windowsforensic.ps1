@@ -9,7 +9,8 @@ function Append-Output {
     )
     Write-Output "### $description ###" >> $outputFile
     try {
-        Invoke-Expression $command 2>&1 >> $outputFile
+        $output = Invoke-Expression $command 2>&1
+        Write-Output $output >> $outputFile
     } catch {
         Write-Output "Error executing command: $_" >> $outputFile
     }
@@ -18,6 +19,9 @@ function Append-Output {
 
 # Clear previous content
 Clear-Content $outputFile
+
+# Log start time
+Write-Output "Script started at $(Get-Date)" >> $outputFile
 
 # Get the local IP address and subnet
 $networkInterface = Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -match "^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$" } | Select-Object -First 1
@@ -49,7 +53,8 @@ if ($localIP -and $subnet) {
     Append-Output "nbtstat -A $localIP" "Scan: NBTStat -A"
     for ($i = 1; $i -le 254; $i++) {
         $ip = "$subnet.$i"
-        $pingResult = Test-Connection -ComputerName $ip -Count 1 -Quiet
+        Write-Output "Pinging $ip" >> $outputFile
+        $pingResult = Test-Connection -ComputerName $ip -Count 1 -Quiet -ErrorAction SilentlyContinue
         if ($pingResult) {
             Append-Output "nbtstat -A $ip" "Scan: NBTStat -A $ip"
         }
@@ -157,3 +162,6 @@ Append-Output "systeminfo" "System Info: System Info"
 Append-Output "wmic csproduct get name" "System Info: WMIC CS Product"
 Append-Output "wmic bios get serialnumber" "System Info: WMIC BIOS Serial Number"
 Append-Output "wmic computersystem list brief" "System Info: WMIC Computer System List Brief"
+
+# Log end time
+Write-Output "Script ended at $(Get-Date)" >> $outputFile
