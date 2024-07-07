@@ -49,18 +49,20 @@ if ($localIP -and $subnet) {
     Append-Output "wmic share get" "Network Discovery: WMIC Share Get"
     Append-Output "wmic logicaldisk get" "Network Discovery: WMIC Logical Disk Get"
 
-    # Scan
+    # Scan only the first 10 IPs
     Append-Output "nbtstat -A $localIP" "Scan: NBTStat -A"
-    for ($i = 1; $i -le 254; $i++) {
+    for ($i = 1; $i -le 10; $i++) {
         $ip = "$subnet.$i"
         Write-Output "Pinging $ip" >> $outputFile
         $pingResult = Test-Connection -ComputerName $ip -Count 1 -Quiet -ErrorAction SilentlyContinue
         if ($pingResult) {
             Append-Output "nbtstat -A $ip" "Scan: NBTStat -A $ip"
+        } else {
+            Write-Output "Ping to $ip failed or timed out." >> $outputFile
         }
     }
     Append-Output "nbtstat -c" "Scan: NBTStat -c"
-    for ($i = 1; $i -le 254; $i++) {
+    for ($i = 1; $i -le 10; $i++) {
         $ip = "$subnet.$i"
         Append-Output "nbtstat -An $ip" "Scan: NBTStat -An $ip"
     }
