@@ -7,21 +7,24 @@ function Append-Output {
         [string]$command,
         [string]$description
     )
-    Write-Output "### $description ###" >> $outputFile
+    Write-Output "### $description ###" | Out-File -Append -FilePath $outputFile
+    Write-Output "Running: $description" | Out-File -Append -FilePath $outputFile
     try {
         $output = Invoke-Expression $command 2>&1
-        Write-Output $output >> $outputFile
+        Write-Output $output | Out-File -Append -FilePath $outputFile
     } catch {
-        Write-Output "Error executing command: $_" >> $outputFile
+        Write-Output "Error executing command: $_" | Out-File -Append -FilePath $outputFile
     }
-    Write-Output "`n" >> $outputFile
+    Write-Output "`n" | Out-File -Append -FilePath $outputFile
 }
 
 # Clear previous content
-Clear-Content $outputFile
+if (Test-Path $outputFile) {
+    Remove-Item $outputFile
+}
 
 # Log start time
-Write-Output "Script started at $(Get-Date)" >> $outputFile
+Write-Output "Script started at $(Get-Date)" | Out-File -FilePath $outputFile
 
 # Get the local IP address and subnet
 $networkInterface = Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -match "^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$" } | Select-Object -First 1
@@ -31,11 +34,11 @@ if ($networkInterface) {
     if ($lastDotIndex -gt 0) {
         $subnet = $localIP.Substring(0, $lastDotIndex)
     } else {
-        Write-Output "Invalid IP format: $localIP" >> $outputFile
+        Write-Output "Invalid IP format: $localIP" | Out-File -Append -FilePath $outputFile
         $subnet = $null
     }
 } else {
-    Write-Output "No suitable network interface found." >> $outputFile
+    Write-Output "No suitable network interface found." | Out-File -Append -FilePath $outputFile
 }
 
 # Network Discovery - Handling network-related errors
@@ -53,12 +56,12 @@ if ($localIP -and $subnet) {
     Append-Output "nbtstat -A $localIP" "Scan: NBTStat -A"
     for ($i = 1; $i -le 10; $i++) {
         $ip = "$subnet.$i"
-        Write-Output "Pinging $ip" >> $outputFile
+        Write-Output "Pinging $ip" | Out-File -Append -FilePath $outputFile
         $pingResult = Test-Connection -ComputerName $ip -Count 1 -Quiet -ErrorAction SilentlyContinue
         if ($pingResult) {
             Append-Output "nbtstat -A $ip" "Scan: NBTStat -A $ip"
         } else {
-            Write-Output "Ping to $ip failed or timed out." >> $outputFile
+            Write-Output "Ping to $ip failed or timed out." | Out-File -Append -FilePath $outputFile
         }
     }
     Append-Output "nbtstat -c" "Scan: NBTStat -c"
@@ -67,7 +70,7 @@ if ($localIP -and $subnet) {
         Append-Output "nbtstat -An $ip" "Scan: NBTStat -An $ip"
     }
 } else {
-    Write-Output "Skipping network commands due to missing network configuration." >> $outputFile
+    Write-Output "Skipping network commands due to missing network configuration." | Out-File -Append -FilePath $outputFile
 }
 
 # Network Information
@@ -166,4 +169,4 @@ Append-Output "wmic bios get serialnumber" "System Info: WMIC BIOS Serial Number
 Append-Output "wmic computersystem list brief" "System Info: WMIC Computer System List Brief"
 
 # Log end time
-Write-Output "Script ended at $(Get-Date)" >> $outputFile
+Write-Output "Script ended at $(Get-Date)" | Out-File -Append -FilePath $outputFile
